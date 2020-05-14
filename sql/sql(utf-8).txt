@@ -1,0 +1,215 @@
+●SQL文の統一事項
+命令文　　：大文字
+テーブル名：小文字
+カラム名　：小文字
+
+●ログイン
+mysql -u root
+
+●DBの検索エンジン作成
+use information_schema;
+select table_name,engine from tables;
+
+
+●ーーーーーーー　テーブル関連のコマンド　ーーーーーーー●
+
+●テーブルの情報取得
+SELECT
+	table_name,
+	column_name,
+	ordinal_position,
+	column_default,
+	is_nullable,
+	data_type,
+	character_maximum_length
+FROM
+	information_schema.columns
+WHERE
+	table_schema = 'web1902(DBの名前)';
+
+●テーブルのカラム名のみ取得
+SELECT column_name FROM information_schema.columns
+WHERE table_schema = 'web1902' AND table_name = 'k1_user';
+
+
+●ーーーーーーー　ユーザ関連のコマンド　ーーーーーーー●
+
+参考URL　https://qiita.com/PallCreaker/items/0b02c5f42be5d1a14adb
+
+●ユーザ確認系　
+SELECT Host, User FROM mysql.user;
+SELECT Host, User, authentication_string FROM mysql.user;
+SHOW GRANTS FOR root@localhost;
+SHOW GRANTS FOR current_user();
+
+●ユーザ作成（開発環境）
+// リナックス→ウィンドウズ用のユーザ作成（逆もいる）
+GRANT ALL ON *.* TO 'root'@'192.168.1.102' IDENTIFIED BY 'root';
+GRANT ALL ON web1902.* TO 'web1902'@'localhost' IDENTIFIED BY 'web';
+
+GRANT ALL ON *.* TO 'root'@'219.106.37.195' IDENTIFIED BY 'root';
+219.106.37.195
+
+●ユーザ作成（サービス用いらんかも）
+GRANT ALL ON web1902.* TO 'web1902_k1_admin'@'%' IDENTIFIED BY 'admin';
+GRANT SELECT,INSERT,UPDATE ON web1902.* TO 'web1902_k1_user'@'%'  IDENTIFIED BY 'user';
+GRANT SELECT,INSERT        ON web1902.* TO 'web1902_k1_guest'@'%' IDENTIFIED BY 'gst';
+
+●テーブル定義確認
+desc k1_user;
+desc k1_secret_q;
+desc k1_log;
+desc k1_question;
+desc k1_answer;
+desc k1_grade;
+
+●削除 or 最初から検証する用
+
+DROP TABLE k1_secret_q;
+DROP TABLE k1_log;
+DROP TABLE k1_question;
+DROP TABLE k1_answer;
+DROP TABLE k1_grade;
+
+DROP DATABASE web1902;
+
+
+
+●ーーーーーーー　以降作業用のコマンド　ーーーーーーー●
+
+
+
+DROP DATABASE web1902;
+CREATE DATABASE web1902;
+USE web1902;
+
+CREATE TABLE k1_secret_q
+( sq_id TINYINT(1)  NOT NULL PRIMARY KEY,
+  sq_q  VARCHAR(20) NOT NULL
+)DEFAULT CHARSET=utf8;
+
+CREATE TABLE k1_user
+( user_id               VARCHAR(6)   NOT NULL  PRIMARY KEY,
+  user_pw               VARCHAR(255) NOT NULL,
+  user_last_name        VARCHAR(30)  NOT NULL,
+  user_first_name       VARCHAR(30)  NOT NULL,
+  user_last_name_kana   VARCHAR(30)  NOT NULL,
+  user_first_name_kana  VARCHAR(30)  NOT NULL,
+  user_birth_date       DATE         NOT NULL,
+  user_sex              VARCHAR(3)   NOT NULL,
+  user_postalcode       MEDIUMINT(7) ZEROFILL  NOT NULL,
+  user_address_1        VARCHAR(20)  NOT NULL,
+  user_address_2        VARCHAR(20)  NOT NULL,
+  user_address_3        VARCHAR(20)  NOT NULL,
+  user_tel              VARCHAR(13)  NOT NULL,
+  user_mail             TEXT         NOT NULL,
+  user_secret_q         TINYINT(1)   NOT NULL,
+  user_secret_a         VARCHAR(20)  NOT NULL, 
+  user_registration     DATETIME     NOT NULL,
+  user_mod_date         DATETIME,
+  user_miss             TINYINT(1)   DEFAULT '0',
+  user_freeze_time      DATETIME,
+  user_delete           TINYINT(1)   DEFAULT '0',
+  user_freeze           TINYINT(1)   DEFAULT '0',
+  CONSTRAINT FK_us_sq
+  FOREIGN KEY(user_secret_q) REFERENCES k1_secret_q(sq_id)
+)DEFAULT CHARSET=utf8;
+
+CREATE TABLE k1_log
+( log_id  VARCHAR(6) NOT NULL,
+  log_log DATETIME   NOT NULL,
+  PRIMARY KEY(log_id,log_log)
+)DEFAULT CHARSET=utf8;
+
+CREATE TABLE k1_question
+( qu_no             INT(6)      NOT NULL  PRIMARY KEY  AUTO_INCREMENT,
+  qu_title          VARCHAR(20) NOT NULL,
+  qu_id             VARCHAR(6)  NOT NULL,
+  qu_question       TEXT        NOT NULL,
+  qu_answer_1       VARCHAR(20) NOT NULL,
+  qu_answer_2       VARCHAR(20) NOT NULL,
+  qu_answer_3       VARCHAR(20) NOT NULL,
+  qu_answer_4       VARCHAR(20) NOT NULL,
+  qu_answer_correct TINYINT(1)  NOT NULL,
+  qu_time_limit     TINYINT(1)  NOT NULL,
+  qu_explanation    TEXT        NOT NULL,
+  qu_create_date    DATETIME    NOT NULL,
+  qu_mod_date       DATETIME,
+  qu_status         TINYINT(1)  DEFAULT'0' NOT NULL,
+  qu_comment        TEXT,
+  qu_delete         TINYINT(1)  DEFAULT'0' NOT NULL,
+  CONSTRAINT FK_qu_id
+  FOREIGN KEY(qu_id) REFERENCES k1_user(user_id)
+)DEFAULT CHARSET=utf8;
+
+CREATE TABLE k1_answer
+( an_no         INT NOT NULL    PRIMARY KEY  AUTO_INCREMENT,
+  an_su_a       INT DEFAULT'0',
+  an_su_c       INT DEFAULT'0',
+  an_su_e       INT DEFAULT'0',
+  an_evaluation INT DEFAULT'0',
+  CONSTRAINT FK_an_no
+  FOREIGN KEY(an_no) REFERENCES k1_question(qu_no)
+)DEFAULT CHARSET=utf8;
+
+CREATE TABLE k1_grades
+( gr_id     VARCHAR(6)  NOT NULL,
+  gr_type   TINYINT(1)  NOT NULL,
+  gr_score  TINYINT(1),
+  gr_time   DATETIME,
+  gr_su     INT         DEFAULT'0'  NOT NULL,
+  PRIMARY KEY(gr_id,gr_type),
+  CONSTRAINT FK_gr_id
+  FOREIGN KEY(gr_id) REFERENCES k1_user(user_id)
+)DEFAULT CHARSET=utf8;
+
+desc k1_secret_q;
+desc k1_log;
+desc k1_question;
+desc k1_answer;
+desc k1_grades;
+
+ALTER TABLE k1_user ADD INDEX  IDX_mail(user_mail(255)); 
+
+INSERT INTO k1_secret_q(sq_id,sq_q)
+VALUES(1,'母親の旧姓は？'),(2,'好きな食べ物は？'),(3,'尊敬する人は？')
+,(4,'卒業した小学校は？'),(5,'ペットの名前は？'),(6,'初恋の人の名前は？');
+
+INSERT INTO k1_user VALUES('admin','$2y$10$I09aqdu4OdjVXPEYyNG5Cu2GtmiW7YW/dDBOMtdBun0h/.VCyiTMG','秋野','浩朗',
+'ｱｷﾉ','ﾋﾛｱｷ','19890804','男','5360008','大阪府','大阪市城東区関目','0-0-0-000',
+'06-0000-0000','damymail@mail.com',
+'2','特になし',current_timestamp(),current_timestamp(),0,null,0,0);
+
+INSERT INTO k1_question VALUES('1','日本の首都について','admin','日本の首都は？','大阪','東京','京都','愛知','2','10','正解は「東京」です。常識。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('2','内閣総理大臣','admin','現在(2019/12/06)の日本の内閣総理大臣は？','安部晋三','安倍晋三','安部真三','安倍真三','2','15','正解は「安倍晋三」です。常識。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('3','早押し問題！','admin','1+1は？','-2','22','2','▲2','3','5','正解は「2」。常識…。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('4','旧暦','admin','霜月は何月？','11月','9月','6月','1月','1','10','正解は「11月」（9月：長月、6月：水無月、1月：睦月）','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('5','基本情報試験から','admin','TCP/IP通信のL４層は？','セッション層','データリンク層','トランスポート層','プレゼンテーション層','3','10','正解は「トランスポート層」.間違えるわけないよね。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('6','漢字','admin','「鯱」と書いてなんと読む？','さめ','しゃち','うつぼ','いるか','2','10','正解は「しゃち」です。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('7','日本三景','admin','日本三景に「含まれない」ものは？','宮島','富士山','天橋立','松島','2','10','正解は「富士山」です。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('8','WEB科について','admin','現在(2019/12/06)のWEB科の学生数は？','11人','12人','13人','14人','3','10','正解は「13人」です。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('9','日経平均株価について','admin','現在(2019/12/06)の日経平均株価を構成する会社数は？','200社','225社','215社','315社','2','10','正解は「225」社です。','20191206','20191206','2','null','0');
+INSERT INTO k1_question VALUES('10','トルコの首都イスタンブルについて','admin','イスタンブルを通る海峡の名前は？','マルマラ海峡','ジブラルタル海峡','ボスポラス海峡','ダーダネルス海峡','3','20','正解は「ボスポラス海峡」でした','20191206','20191206','2','null','0');
+
+INSERT INTO k1_answer VALUES
+('1','10','10','3','9'),
+('2','10','0','2','4'),
+('3','5','1','2','2'),
+('4','7','3','3','12'),
+('5','6','6','6','24'),
+('6','3','0','3','12'),
+('7','5','0','2','4'),
+('8','10','10','10','50'),
+('9','10','4','3','6'),
+('10','10','0','10','30');
+
+
+insert into k1_grades (gr_id,gr_type,gr_su)
+values('admin',0,0),('admin',1,0),('admin',2,0);
+
+
+
+
+●これは入らない。
+ALTER TABLE k1_user ADD UNIQUE UNI_mail(user_mail); 
+ERROR 1170 (42000): BLOB/TEXT column 'user_mail' used in key specification without a key length
